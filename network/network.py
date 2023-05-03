@@ -13,13 +13,30 @@ class Network:
         self.biases = [np.random.randn(y, 1) for y in layer_sizes[1:]]
         self.weights = [np.random.randn(y, x) for x, y in zip(layer_sizes[:-1], layer_sizes[1:])]
 
+    def feedforward(self, a):
+        for b, w in zip(self.biases, self.weights):
+            a = self.sigmoid(np.dot(w, a) + b)
+        return a
+
     def SGD(self, training_data, epochs, batch_size, eta, test_data=None):
         n = len(training_data)
-        for _ in range(epochs):
+        n_test = 0
+        if test_data:
+            n_test = len(test_data)
+
+        for j in range(epochs):
             shuffle(training_data)
             mini_batches = [training_data[i:i + batch_size] for i in range(0, n, batch_size)]
             for mini_batch in mini_batches:
                 self.update_mini_batch(mini_batch, eta)
+            if test_data:
+                print(f"Epoch {j}: {self.evaluate(test_data)} / {n_test}")
+            else:
+                print(f"Epoch {j} complete")
+
+    def evaluate(self, data):
+        results = [(np.argmax(self.feedforward(x)), y) for x, y in data]
+        return sum(int(x == np.where(y == 1.0)[0]) for x,y in results)
 
     def update_mini_batch(self, mini_batch, eta):
         nabla_weights, nabla_biases = [np.zeros(w.shape) for w in self.weights], [np.zeros(b.shape) for b in self.biases]
@@ -64,7 +81,7 @@ class Network:
         delta = self.cost_function_derivative(activations[-1], y) * self.sigmoid_derivative(zs_vectors[-1])
 
         nabla_biases[-1] = delta
-        nabla_weights[-1] = delta * activations[-2]
+        nabla_weights[-1] = delta * activations[-2].transpose()
 
         # iterate backwards(layer = layer from end)
         for layer in range(2, self.num_layers):
